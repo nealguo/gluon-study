@@ -1,23 +1,5 @@
-from mxnet import gluon
-from mxnet import autograd, nd
+from mxnet import gluon, init, autograd
 import sys
-
-
-# 定义softmax运算
-def softmax(X):
-    X_exp = X.exp()
-    partition = X_exp.sum(axis=1, keepdims=True)
-    return X_exp / partition
-
-
-# 定义模型
-def net(X):
-    return softmax(nd.dot(X.reshape((-1, num_inputs)), W) + b)
-
-
-# 定义损失函数
-def cross_entropy(y_hat, y):
-    return -nd.pick(y_hat, y).log()
 
 
 # 定义分类准确率
@@ -83,16 +65,18 @@ if __name__ == '__main__':
                                       batch_size, shuffle=False,
                                       num_workers=num_workers)
 
-    # 初始化模型参数
-    num_inputs = 28 * 28
-    num_outputs = 10
-    W = nd.random.normal(scale=0.01, shape=(num_inputs, num_outputs))
-    b = nd.zeros(num_outputs)
-    W.attach_grad()
-    b.attach_grad()
+    # 定义模型
+    net = gluon.nn.Sequential()
+    net.add(gluon.nn.Dense(256, activation="relu"), gluon.nn.Dense(10))
+    net.initialize(init.Normal(sigma=0.01))
+
+    # 定义损失函数
+    loss = gluon.loss.SoftmaxCrossEntropyLoss()
+
+    # 定义优化算法
+    trainer = gluon.Trainer(net.collect_params(), "sgd", {"learning_rate": 0.5})
 
     # 训练模型
     num_epochs = 5
-    lr = 0.1
-    train(net, train_iter, test_iter, cross_entropy, num_epochs, batch_size,
-          [W, b], lr)
+    train(net, train_iter, test_iter, loss, num_epochs, batch_size,
+          None, None, trainer)
