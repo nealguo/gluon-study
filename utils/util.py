@@ -2,20 +2,25 @@ from mxnet import gluon, autograd, nd
 import mxnet
 import sys
 import time
+import os
 
 
-def load_data_fashion_mnist(batch_size):
+def load_data_fashion_mnist(batch_size, resize=None, root=os.path.join(
+    '~', '.mxnet', 'datasets', 'fashion-mnist')):
     """Load the fashion mnist dataset into memory"""
+    root = os.path.expanduser(root)  # 展开用户路径'~'
+    transformer = []
+    if resize:
+        transformer += [gluon.data.vision.transforms.Resize(resize)]
+    transformer += [gluon.data.vision.transforms.ToTensor()]
+    transformer = gluon.data.vision.transforms.Compose(transformer)
+
     # 获取数据集
-    mnist_train = gluon.data.vision.FashionMNIST(train=True)
-    mnist_test = gluon.data.vision.FashionMNIST(train=False)
+    mnist_train = gluon.data.vision.FashionMNIST(root=root, train=True)
+    mnist_test = gluon.data.vision.FashionMNIST(root=root, train=False)
 
     # 批量读取数据
-    transformer = gluon.data.vision.transforms.ToTensor()
-    if sys.platform.startswith("win"):
-        num_workers = 0
-    else:
-        num_workers = 4
+    num_workers = 0 if sys.platform.startswith("win32") else 4
     train_iter = gluon.data.DataLoader(mnist_train.transform_first(transformer),
                                        batch_size, shuffle=True,
                                        num_workers=num_workers)
