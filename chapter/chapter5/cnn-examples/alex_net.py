@@ -30,7 +30,7 @@ if __name__ == '__main__':
         X = layer(X)
         print(layer.name, 'output shape:\t', X.shape)
 
-    batch_size = 5
+    batch_size = 128
     train_iter, test_iter = util.load_data_fashion_mnist(batch_size, resize=224)
     learning_rate = 0.01
     num_epochs = 5
