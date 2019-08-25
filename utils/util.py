@@ -4,6 +4,23 @@ import sys
 import time
 import os
 
+# need to install IPython and module named 'ipykernel'
+# pip install ipython
+# pip install ipykernel
+from IPython import display
+from matplotlib import pyplot as plt
+
+
+def set_figsize(figsize=(3.5, 2.5)):
+    """Set matplotlib figure size"""
+    use_svg_display()
+    plt.rcParams['figure.figsize'] = figsize
+
+
+def use_svg_display():
+    """Use svg format to display plot"""
+    display.set_matplotlib_formats('svg')
+
 
 def load_data_fashion_mnist(batch_size, resize=None, root=os.path.join(
     '~', '.mxnet', 'datasets', 'fashion-mnist')):
