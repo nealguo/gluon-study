@@ -11,6 +11,16 @@ from IPython import display
 from matplotlib import pyplot as plt
 
 
+def linreg(X, w, b):
+    """Linear regression"""
+    return nd.dot(X, w) + b
+
+
+def squared_loss(y_hat, y):
+    """Squared loss"""
+    return (y_hat - y.reshape(y_hat.shape)) ** 2 / 2
+
+
 def set_figsize(figsize=(3.5, 2.5)):
     """Set matplotlib figure size"""
     use_svg_display()
