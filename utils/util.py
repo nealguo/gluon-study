@@ -1,4 +1,5 @@
-from mxnet import gluon, autograd, nd
+from mxnet import gluon, autograd, init, nd
+import numpy as np
 import mxnet
 import sys
 import time
@@ -19,6 +20,105 @@ def linreg(X, w, b):
 def squared_loss(y_hat, y):
     """Squared loss"""
     return (y_hat - y.reshape(y_hat.shape)) ** 2 / 2
+
+
+def show_trace_2d(f, res):
+    """Show the trace of 2d variables during optimization"""
+    x1, x2 = zip(*res)
+    set_figsize()
+    plt.plot(x1, x2, '-o', color='#ff7f0e')
+    x1 = np.arange(-5.5, 1.0, 0.1)
+    x2 = np.arange(min(-3.0, min(x2) - 1), max(1.0, max(x2) + 1), 0.1)
+    x1, x2 = np.meshgrid(x1, x2)
+    plt.contour(x1, x2, f(x1, x2), colors='#1f77b4')
+    plt.xlabel('x1')
+    plt.ylabel('x2')
+    plt.show()
+
+
+def train_2d(trainer):
+    """Optimize the objective function of 2d variables with a customized trainer"""
+    x1, x2 = -5, -2
+    s_x1, s_x2 = 0, 0
+    res = [(x1, x2)]
+    for i in range(20):
+        x1, x2, s_x1, s_x2 = trainer(x1, x2, s_x1, s_x2)
+        res.append((x1, x2))
+    print('epoch %d, x1 %f, x2 %f' % (20, x1, x2))
+    return res
+
+
+def get_data_ch7():
+    """Get the data set used in Chapter 7"""
+    data = np.genfromtxt('../data/airfoil_self_noise.dat', delimiter='\t')
+    data = (data - data.mean(axis=0)) / data.std(axis=0)
+    return nd.array(data[:, :-1]), nd.array(data[:, -1])
+
+
+def train_ch7(trainer_fn, states, hyperparams, features, labels, batch_size=10, num_epochs=2):
+    """Train a linear regression model"""
+    net, loss = linreg, squared_loss
+    w, b = nd.random.normal(scale=0.01, shape=(features.shape[1], 1)), nd.zeros(1)
+    w.attach_grad()
+    b.attach_grad()
+
+    def eval_loss():
+        return loss(net(features, w, b), labels).mean().asscalar()
+
+    ls = [eval_loss()]
+    data_iter = gluon.data.DataLoader(
+        gluon.data.ArrayDataset(features, labels), batch_size, shuffle=True
+    )
+    start = time.time()
+    for _ in range(num_epochs):
+        for batch_i, (X, y) in enumerate(data_iter):
+            with autograd.record():
+                l = loss(net(X, w, b), y).mean()
+            l.backward()
+            trainer_fn([w, b], states, hyperparams)
+            if (batch_i + 1) * batch_size % 100 == 0:
+                ls.append(eval_loss())
+    end = time.time()
+    print('loss: %f, %f sec per epoch' % (ls[-1], end - start))
+    set_figsize()
+    plt.plot(np.linspace(0, num_epochs, len(ls)), ls)
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    plt.show()
+
+
+def train_gluon_ch7(trainer_name, trainer_hyperparams, features, labels,
+                    batch_size=10, num_epochs=2):
+    """Train a linear regression model with a given Gluon trainer."""
+    net = gluon.nn.Sequential()
+    net.add(gluon.nn.Dense(1))
+    net.initialize(init.Normal(sigma=0.01))
+    loss = gluon.loss.L2Loss()
+
+    def eval_loss():
+        return loss(net(features), labels).mean().asscalar()
+
+    ls = [eval_loss()]
+    data_iter = gluon.data.DataLoader(
+        gluon.data.ArrayDataset(features, labels), batch_size, shuffle=True)
+    trainer = gluon.Trainer(net.collect_params(),
+                            trainer_name, trainer_hyperparams)
+    start = time.time()
+    for _ in range(num_epochs):
+        for batch_i, (X, y) in enumerate(data_iter):
+            with autograd.record():
+                l = loss(net(X), y)
+            l.backward()
+            trainer.step(batch_size)
+            if (batch_i + 1) * batch_size % 100 == 0:
+                ls.append(eval_loss())
+    end = time.time()
+    print('loss: %f, %f sec per epoch' % (ls[-1], end - start))
+    set_figsize()
+    plt.plot(np.linspace(0, num_epochs, len(ls)), ls)
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    plt.show()
 
 
 def set_figsize(figsize=(3.5, 2.5)):

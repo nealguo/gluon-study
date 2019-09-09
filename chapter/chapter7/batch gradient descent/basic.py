@@ -56,7 +56,7 @@ def train_sgd(lr, batch_size, num_epochs=2):
 
 
 if __name__ == '__main__':
-    features, labels = get_dataa_ch7()
+    features, labels = get_data_ch7()
     print(features.shape)
 
     # 批量大小为1500（样本总数），等价于梯度下降
