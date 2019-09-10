@@ -100,9 +100,9 @@ def train_gluon_ch7(trainer_name, trainer_hyperparams, features, labels,
 
     ls = [eval_loss()]
     data_iter = gluon.data.DataLoader(
-        gluon.data.ArrayDataset(features, labels), batch_size, shuffle=True)
-    trainer = gluon.Trainer(net.collect_params(),
-                            trainer_name, trainer_hyperparams)
+        gluon.data.ArrayDataset(features, labels), batch_size, shuffle=True
+    )
+    trainer = gluon.Trainer(net.collect_params(), trainer_name, trainer_hyperparams)
     start = time.time()
     for _ in range(num_epochs):
         for batch_i, (X, y) in enumerate(data_iter):
