@@ -134,6 +134,12 @@ class Benchmark():
         print('%s time: %.4f sec' % (self.prefix, time.time() - self.start))
 
 
+def sgd(params, lr, batch_size):
+    """Mini-batch stochastic gradient descent"""
+    for p in params:
+        p[:] = p - lr * p.grad / batch_size
+
+
 def set_figsize(figsize=(3.5, 2.5)):
     """Set matplotlib figure size"""
     use_svg_display()
