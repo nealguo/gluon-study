@@ -1,4 +1,5 @@
 from mxnet import gluon, autograd, init, nd
+from mxnet.gluon import nn
 import numpy as np
 import mxnet
 import sys
@@ -138,6 +139,28 @@ def sgd(params, lr, batch_size):
     """Mini-batch stochastic gradient descent"""
     for p in params:
         p[:] = p - lr * p.grad / batch_size
+
+
+class Residual(nn.Block):
+    """The residual block"""
+
+    def __init__(self, num_channels, use_1x1conv=False, strides=1, **kwargs):
+        super(Residual, self).__init__(**kwargs)
+        self.conv1 = nn.Conv2D(num_channels, kernel_size=3, padding=1, strides=strides)
+        self.conv2 = nn.Conv2D(num_channels, kernel_size=3, padding=1)
+        if use_1x1conv:
+            self.conv3 = nn.Conv2D(num_channels, kernel_size=1, strides=strides)
+        else:
+            self.conv3 = None
+        self.bn1 = nn.BatchNorm()
+        self.bn2 = nn.BatchNorm()
+
+    def forward(self, X):
+        Y = nd.relu(self.bn1(self.conv1(X)))
+        Y = self.bn2(self.conv2(Y))
+        if self.conv3:
+            X = self.conv3(X)
+        return nd.relu(Y + X)
 
 
 def set_figsize(figsize=(3.5, 2.5)):
