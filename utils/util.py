@@ -121,6 +121,19 @@ def train_gluon_ch7(trainer_name, trainer_hyperparams, features, labels,
     plt.show()
 
 
+class Benchmark():
+    """Benchmark program"""
+
+    def __init__(self, prefix=None):
+        self.prefix = prefix + ' ' if prefix else ''
+
+    def __enter__(self):
+        self.start = time.time()
+
+    def __exit__(self, *args):
+        print('%s time: %.4f sec' % (self.prefix, time.time() - self.start))
+
+
 def set_figsize(figsize=(3.5, 2.5)):
     """Set matplotlib figure size"""
     use_svg_display()
