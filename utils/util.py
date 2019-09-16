@@ -289,7 +289,7 @@ def train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs):
 
 
 def resnet18(num_classes):
-    """The ResNet-18 model."""
+    """The ResNet-18 model"""
     net = nn.Sequential()
     net.add(nn.Conv2D(64, kernel_size=3, strides=1, padding=1),
             nn.BatchNorm(), nn.Activation('relu'))
@@ -309,6 +309,21 @@ def resnet18(num_classes):
             resnet_block(512, 2))
     net.add(nn.GlobalAvgPool2D(), nn.Dense(num_classes))
     return net
+
+
+def try_all_gpus():
+    """Return all available GPUs, or [mx.cpu()] if there is no GPU"""
+    ctxes = []
+    try:
+        for i in range(16):
+            ctx = mxnet.gpu(i)
+            _ = nd.array([0], ctx=ctx)
+            ctxes.append(ctx)
+    except mxnet.base.MXNetError:
+        pass
+    if not ctxes:
+        ctxes = [mxnet.cpu()]
+    return ctxes
 
 
 def try_gpu():
