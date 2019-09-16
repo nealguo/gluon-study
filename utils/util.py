@@ -163,6 +163,18 @@ class Residual(nn.Block):
         return nd.relu(Y + X)
 
 
+def show_images(imgs, num_rows, num_cols, scale=2):
+    """Plot a list of images"""
+    figsize = (num_cols * scale, num_rows * scale)
+    _, axes = plt.subplots(num_rows, num_cols, figsize=figsize)
+    for i in range(num_rows):
+        for j in range(num_cols):
+            axes[i][j].imshow(imgs[i * num_cols + j].asnumpy())
+            axes[i][j].axes.get_xaxis().set_visible(False)
+            axes[i][j].axes.get_yaxis().set_visible(False)
+    return axes
+
+
 def set_figsize(figsize=(3.5, 2.5)):
     """Set matplotlib figure size"""
     use_svg_display()
@@ -226,15 +238,77 @@ def train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx, num_epochs):
               % (epoch + 1, train_l_sum / n, train_acc_sum / n, test_acc, time.time() - start))
 
 
-def evaluate_accuracy(data_iter, net, ctx):
+def evaluate_accuracy(data_iter, net, ctx=[mxnet.cpu()]):
     """Evaluate accuracy of model on the given data set"""
-    acc_sum, n = nd.array([0], ctx=ctx), 0
-    for X, y in data_iter:
-        # 如果ctx为GPU及相应的显存，将数据复制到显存上
-        X, y = X.as_in_context(ctx), y.as_in_context(ctx).astype('float32')
-        acc_sum += (net(X).argmax(axis=1) == y).sum()
-        n += y.size
+    if isinstance(ctx, mxnet.Context):
+        ctx = [ctx]
+    acc_sum, n = nd.array([0]), 0
+    for batch in data_iter:
+        features, labels, _ = _get_batch(batch, ctx)
+        for X, y in zip(features, labels):
+            y = y.astype('float32')
+            acc_sum += (net(X).argmax(axis=1) == y).sum().copyto(mxnet.cpu())
+            n += y.size
+        acc_sum.wait_to_read()
     return acc_sum.asscalar() / n
+
+
+def _get_batch(batch, ctx):
+    """Return features and labels on ctx"""
+    features, labels = batch
+    if labels.dtype != features.dtype:
+        labels = labels.astype(features.dtype)
+    return (gluon.utils.split_and_load(features, ctx),
+            gluon.utils.split_and_load(labels, ctx),
+            features.shape[0])
+
+
+def train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs):
+    """Train and evaluate a model"""
+    print('training on ', ctx)
+    if isinstance(ctx, mxnet.Context):
+        ctx = [ctx]
+    for epoch in range(num_epochs):
+        train_l_sum, train_acc_sum, n, m, start = 0.0, 0.0, 0, 0, time.time()
+        for i, batch in enumerate(train_iter):
+            Xs, ys, batch_size = _get_batch(batch, ctx)
+            ls = []
+            with autograd.record():
+                y_hats = [net(X) for X in Xs]
+                ls = [loss(y_hat, y) for y_hat, y in zip(y_hats, ys)]
+            for l in ls:
+                l.backward()
+            trainer.step(batch_size)
+            train_l_sum += sum([l.sum.asscalar() for l in ls])
+            n += sum([l.size for l in ls])
+            train_acc_sum += sum([(y_hat.argmax(axis=1) == y).sum().asscalar() for y_hat, y in zip(y_hats, ys)])
+            m += sum([y.size for y in ys])
+        test_acc = evaluate_accuracy(test_iter, net, ctx)
+        print('epoch %d, loss %.4f, train acc%.3f, test acc %.3f, time %.1f sec'
+              % (epoch + 1, train_l_sum / n, train_acc_sum / m, test_acc, time.time() - start))
+
+
+def resnet18(num_classes):
+    """The ResNet-18 model."""
+    net = nn.Sequential()
+    net.add(nn.Conv2D(64, kernel_size=3, strides=1, padding=1),
+            nn.BatchNorm(), nn.Activation('relu'))
+
+    def resnet_block(num_channels, num_residuals, first_block=False):
+        block = nn.Sequential()
+        for i in range(num_residuals):
+            if i == 0 and not first_block:
+                block.add(Residual(num_channels, use_1x1conv=True, strides=2))
+            else:
+                block.add(Residual(num_channels))
+        return block
+
+    net.add(resnet_block(64, 2, first_block=True),
+            resnet_block(128, 2),
+            resnet_block(256, 2),
+            resnet_block(512, 2))
+    net.add(nn.GlobalAvgPool2D(), nn.Dense(num_classes))
+    return net
 
 
 def try_gpu():
