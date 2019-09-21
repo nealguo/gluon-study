@@ -39,4 +39,4 @@ if __name__ == '__main__':
     axes = util.show_images(imgs, 2, 5).flatten()
     for ax, label in zip(axes, batch.label[0][0:10]):
         util.show_bboxes(ax, [label[0][1:5] * edge_size], colors=['w'])
-        util.plt.show()
+    util.plt.show()

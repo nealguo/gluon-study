@@ -12,7 +12,7 @@ def show_bboxes(axes, bboxes, labels=None, colors=None):
         return obj
 
     labels = _make_list(labels)
-    colors = _make_list(colors, ['b', 'g', 'r', 'm', 'k'])
+    colors = _make_list(colors, ['b', 'g', 'r', 'm', 'c'])
     for i, bbox in enumerate(bboxes):
         color = colors[i % len(colors)]
         rect = util.bbox_to_rect(bbox.asnumpy(), color)
@@ -76,4 +76,4 @@ if __name__ == '__main__':
             continue
         label = ('dog=', 'cat=')[int(i[0])] + str(i[1])
         show_bboxes(fig.axes, [nd.array(i[2:]) * bbox_scale], label)
-        util.plt.show()
+    util.plt.show()
